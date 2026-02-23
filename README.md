@@ -246,3 +246,11 @@ Dùng **DevTools → Network** của Chrome để xem API của site và điền
 **Site thêm mới không load:**
 - Kiểm tra file JSON hợp lệ (dùng jsonlint.com)
 - Restart app sau khi thêm site
+
+
+  git init
+  git add .
+  git commit -m "Initial commit: passing tests"
+  git branch -M main
+  git remote add origin <repo-url-tren-github>
+  git push -u origin main
