@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AutoBuy Dashboard</title>
+<link rel="stylesheet" href="ui-style.css">
+</head>
+<body>
+
+<div class="hdr">
+  <h1>⚡ AutoBuy <span class="tc-muted" id="site-count"></span></h1>
+  <div class="hdr-right">
+    <span id="elapsed">00:00</span>
+    <span id="ws-status">🟢 Live</span>
+    <button id="theme-toggle" onclick="toggleTheme()" title="Đổi giao diện">🌙</button>
+    <button class="btn-g" onclick="sendCmd('startAll')">▶ Start All</button>
+    <button class="btn-r" onclick="confirmStopAll()">■ Stop All</button>
+  </div>
+</div>
+
+<nav>
+  <button class="nb active" onclick="showPage('dashboard',this)">📊 Dashboard</button>
+  <button class="nb"        onclick="showPage('history',this)">📋 Lịch sử</button>
+  <button class="nb"        onclick="showPage('settings',this)">⚙️ Cấu hình</button>
+  <button class="nb"        onclick="showPage('notifier',this)">🔔 Thông báo</button>
+  <button class="nb"        onclick="showPage('scheduler',this)">⏰ Hẹn giờ</button>
+  <button class="nb"        onclick="showPage('sites',this)">🌐 Sites</button>
+  <button class="nb"        onclick="showPage('analytics',this)">📈 Analytics</button>
+  <button class="nb"        onclick="showPage('health',this)">💚 Health</button>
+</nav>
+
+<!-- ══ DASHBOARD ══ -->
+<div id="page-dashboard" class="page active">
+  <div class="stats-row">
+    <div class="stat g"><div class="stat-l">Tổng đã mua</div><div class="stat-v gc" id="s-bought">0</div></div>
+    <div class="stat y"><div class="stat-l">Tổng chi</div><div class="stat-v yc" id="s-spent">0₫</div></div>
+    <div class="stat">  <div class="stat-l">Accounts đang chạy</div><div class="stat-v ac" id="s-running">0</div></div>
+    <div class="stat">  <div class="stat-l">Sites hoạt động</div><div class="stat-v" id="s-sites">0</div></div>
+  </div>
+
+  <div class="accounts-grid" id="accounts-grid">
+    <div class="no-data-msg">Đang khởi động...</div>
+  </div>
+
+  <div class="bottom">
+    <div class="card">
+      <div class="card-head">
+        <span>📋 Log realtime</span>
+        <div style="display:flex;gap:6px">
+          <select id="log-filter" class="log-filter-select" onchange="renderLog()">
+            <option value="">Tất cả</option>
+          </select>
+          <button class="btn-ghost btn-xs" onclick="document.getElementById('log-box').innerHTML=''">xóa</button>
+        </div>
+      </div>
+      <div id="log-box"></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <span>🎉 Acc đã mua (<span id="bought-count">0</span>)</span>
+        <button class="btn-ghost btn-xs" onclick="clearBought()">xóa</button>
+      </div>
+      <div id="bought-box"><div class="no-data">Chưa có acc nào...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HISTORY ══ -->
+<div id="page-history" class="page">
+  <div class="history-toolbar">
+    <select id="h-site" onchange="resetHistoryPage()"><option value="">Tất cả site</option></select>
+    <select id="h-acc"  onchange="resetHistoryPage()"><option value="">Tất cả account</option></select>
+    <input type="date" id="h-from" onchange="resetHistoryPage()">
+    <input type="date" id="h-to"   onchange="resetHistoryPage()">
+    <button class="btn-p" onclick="exportCSVFiltered()">⬇ Export CSV</button>
+    <button class="btn-d" onclick="if(confirm('Xóa toàn bộ lịch sử?'))sendCmd('clearHistory')">🗑 Xóa tất cả</button>
+  </div>
+  <div class="card">
+    <div id="history-table-wrap">
+      <table>
+        <thead><tr><th>Thời gian</th><th>Site</th><th>Account</th><th>Acc ID</th><th>Giá</th><th></th></tr></thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </div>
+    <div id="load-more-wrap"></div>
+  </div>
+</div>
+
+<!-- ══ SETTINGS ══ -->
+<div id="page-settings" class="page">
+  <div id="site-sel-wrap" class="site-sel-wrap">
+    <span class="hint">Chọn site:</span>
+    <select id="site-sel" onchange="loadSettings()"></select>
+  </div>
+
+  <div id="err-banner" class="err-banner"></div>
+
+  <div class="settings-grid">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="sec">
+        <h3>🔐 Site & URL</h3>
+        <div class="field">
+          <label>URL trang sản phẩm</label>
+          <input type="text" id="cfg-url">
+          <div class="hint">URL chứa cate_id (ví dụ: /accounts/xxxx-xxxx)</div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h3>👥 Tài khoản</h3>
+        <table class="acc-table">
+          <thead><tr><th>Username</th><th>Password</th><th>Label</th><th style="text-align:center">Bật</th><th></th></tr></thead>
+          <tbody id="acc-tbody">
+            <tr><td colspan="5" class="no-data">Đang tải...</td></tr>
+          </tbody>
+        </table>
+        <div class="acc-add-row">
+          <input type="text"     id="new-username" placeholder="username">
+          <input type="password" id="new-password" placeholder="password">
+          <input type="text"     id="new-label"    placeholder="label (tuỳ chọn)">
+          <button class="btn-g" onclick="addNewAcc()" style="white-space:nowrap">+ Thêm</button>
+        </div>
+        <div class="hint" style="margin-top:6px">⚠ Thay đổi accounts cần restart script mới có hiệu lực.</div>
+      </div>
+
+      <div class="sec">
+        <h3>💰 Giá & Giới hạn</h3>
+        <div class="field"><label>Giá tối đa (₫)</label><input type="number" id="cfg-maxPrice" min="0"></div>
+        <div class="field"><label>Số acc tối đa (0 = không giới hạn)</label><input type="number" id="cfg-maxBuy" min="0"></div>
+        <div class="field"><label>Số acc lấy mỗi lần</label><input type="number" id="cfg-fetchLimit" min="1"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="sec">
+        <h3>⏱ Timing</h3>
+        <div class="field"><label>Delay bình thường (ms)</label><input type="number" id="cfg-retryNormal" min="50"></div>
+        <div class="field"><label>Delay khi sale (ms)</label><input type="number" id="cfg-retrySale" min="10"></div>
+        <div class="field"><label>Jitter (ms)</label><input type="number" id="cfg-jitter" min="0"></div>
+        <div class="field"><label>Cooldown sau 429 (ms)</label><input type="number" id="cfg-cooldown" min="1000"></div>
+        <div class="field">
+          <label>Empty threshold (số lần trống liên tiếp để giảm tốc)</label>
+          <input type="number" id="cfg-emptyThreshold" min="1">
+        </div>
+        <div class="field">
+          <label>Page timeout – Puppeteer login (ms)</label>
+          <input type="number" id="cfg-pageTimeout" min="3000">
+          <div class="hint">⚠ Thay đổi cần restart script mới có hiệu lực.</div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h3>🌐 Web UI</h3>
+        <div class="toggle-row">
+          <span class="toggle-label">Terminal UI</span>
+          <label class="toggle"><input type="checkbox" id="cfg-terminal"><span class="tslider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Remote access</span>
+          <label class="toggle"><input type="checkbox" id="cfg-remote"><span class="tslider"></span></label>
+        </div>
+        <div class="field"><label>Port</label><input type="number" id="cfg-port" min="1024" max="65535"></div>
+        <div class="warn-box">⚠ Thay đổi Remote / Port cần restart script mới có hiệu lực.</div>
+      </div>
+
+      <!-- Gộp Auth vào Settings -->
+      <div class="sec">
+        <h3>🔒 Xác thực Web UI</h3>
+        <p class="hint" style="margin-bottom:12px">Chỉ áp dụng khi <code>remote: true</code>. Localhost không cần auth.</p>
+        <div class="toggle-row" style="margin-bottom:14px">
+          <span class="toggle-label fw-bold">Bật xác thực</span>
+          <label class="toggle"><input type="checkbox" id="auth-enabled"><span class="tslider"></span></label>
+        </div>
+        <div class="field">
+          <label>Tên đăng nhập</label>
+          <input type="text" id="auth-username" value="admin" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>Mật khẩu mới</label>
+          <input type="password" id="auth-password" placeholder="Để trống = không đổi mật khẩu" autocomplete="new-password">
+        </div>
+        <div class="hint" style="margin-top:4px">Config lưu tại <code>auth.json</code>. Cần restart để áp dụng với WebSocket.</div>
+        <div style="display:flex;justify-content:flex-end;margin-top:12px">
+          <button class="btn-p" onclick="saveAuthConfig()">💾 Lưu auth</button>
+          <span class="saved" id="auth-saved-msg" style="margin-left:10px;align-self:center">✓ Đã lưu</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sf">
+    <span class="saved" id="saved-msg">✓ Đã lưu</span>
+    <button class="btn-d" onclick="resetSettings()">↺ Reset về mặc định</button>
+    <button class="btn-p" onclick="saveSettings()">💾 Lưu</button>
+  </div>
+</div>
+
+<!-- ══ NOTIFIER (gộp Telegram + Desktop + Webhook) ══ -->
+<div id="page-notifier" class="page">
+  <!-- Sub-tabs -->
+  <div class="subtabs">
+    <button class="stab active" onclick="showSubtab('ntf','telegram',this)">📱 Telegram</button>
+    <button class="stab"        onclick="showSubtab('ntf','webhook',this)">🔗 Webhook</button>
+    <button class="stab"        onclick="showSubtab('ntf','desktop',this)">🖥 Desktop</button>
+  </div>
+
+  <!-- Telegram -->
+  <div id="ntf-telegram" class="subtab-page active">
+    <div class="settings-grid">
+      <div class="sec">
+        <h3>📱 Telegram Bot</h3>
+        <div class="notif-group">
+          <div class="toggle-row">
+            <span class="toggle-label fw-bold">Bật Telegram</span>
+            <label class="toggle"><input type="checkbox" id="ntf-tg-enabled"><span class="tslider"></span></label>
+          </div>
+          <div class="field"><label>Bot Token</label><input type="text" id="ntf-tg-token" placeholder="123456:ABC-DEF..."></div>
+          <div class="field">
+            <label>Chat ID</label>
+            <input type="text" id="ntf-tg-chatid" placeholder="-100123456789">
+            <div class="hint">Dùng @userinfobot để lấy chat ID</div>
+          </div>
+        </div>
+        <div class="notif-group">
+          <div class="notif-group-title">Nhận thông báo khi:</div>
+          <div class="toggle-row"><span class="toggle-label">🎉 Mua được acc</span>     <label class="toggle"><input type="checkbox" id="ntf-tg-bought"><span class="tslider"></span></label></div>
+          <div class="toggle-row"><span class="toggle-label">💸 Hết tiền</span>         <label class="toggle"><input type="checkbox" id="ntf-tg-money"><span class="tslider"></span></label></div>
+          <div class="toggle-row"><span class="toggle-label">⚠️ Engine lỗi/restart</span><label class="toggle"><input type="checkbox" id="ntf-tg-error"><span class="tslider"></span></label></div>
+          <div class="toggle-row"><span class="toggle-label">🚀 Start All</span>        <label class="toggle"><input type="checkbox" id="ntf-tg-start"><span class="tslider"></span></label></div>
+          <div class="toggle-row"><span class="toggle-label">🛑 Stop All</span>         <label class="toggle"><input type="checkbox" id="ntf-tg-stop"><span class="tslider"></span></label></div>
+        </div>
+      </div>
+      <div class="sec">
+        <h3>🧪 Test</h3>
+        <p class="hint" style="margin-bottom:12px">Gửi thông báo thử để kiểm tra cấu hình.</p>
+        <button class="btn-ghost" onclick="testNotifier()" style="width:100%">📤 Gửi test ngay</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Webhook -->
+  <div id="ntf-webhook" class="subtab-page">
+    <div class="settings-grid">
+      <div class="sec">
+        <h3>🔗 Webhook Outbound</h3>
+        <p class="hint" style="margin-bottom:12px">Gửi POST JSON đến bất kỳ URL nào — Discord, Slack, hoặc endpoint riêng.</p>
+        <div class="toggle-row" style="margin-bottom:14px">
+          <span class="toggle-label fw-bold">Bật Webhook</span>
+          <label class="toggle"><input type="checkbox" id="wh-enabled"><span class="tslider"></span></label>
+        </div>
+        <div class="field"><label>Webhook URL</label><input type="text" id="wh-url" placeholder="https://discord.com/api/webhooks/..."></div>
+        <div class="field">
+          <label>Format</label>
+          <select id="wh-format" class="sel">
+            <option value="generic">Generic JSON</option>
+            <option value="discord">Discord Embeds</option>
+          </select>
+        </div>
+        <div class="notif-group" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--b)">
+          <div class="notif-group-title">Gửi khi:</div>
+          <div class="toggle-row"><span class="toggle-label">🎉 Mua được</span>   <label class="toggle"><input type="checkbox" id="wh-ev-bought"><span class="tslider"></span></label></div>
+          <div class="toggle-row"><span class="toggle-label">⚠️ Lỗi/Restart</span><label class="toggle"><input type="checkbox" id="wh-ev-error"><span class="tslider"></span></label></div>
+          <div class="toggle-row"><span class="toggle-label">🚀 Start All</span>  <label class="toggle"><input type="checkbox" id="wh-ev-start"><span class="tslider"></span></label></div>
+          <div class="toggle-row"><span class="toggle-label">🛑 Stop All</span>   <label class="toggle"><input type="checkbox" id="wh-ev-stop"><span class="tslider"></span></label></div>
+          <div class="toggle-row"><span class="toggle-label">💸 Hết tiền</span>   <label class="toggle"><input type="checkbox" id="wh-ev-money"><span class="tslider"></span></label></div>
+        </div>
+      </div>
+      <div class="sec">
+        <h3>🧪 Test</h3>
+        <p class="hint" style="margin-bottom:12px">Lưu config trước rồi gửi test.</p>
+        <button class="btn-ghost" onclick="testWebhook()" style="width:100%">📤 Gửi test ngay</button>
+        <div class="sec" style="margin-top:14px">
+          <h3>ℹ️ Hướng dẫn</h3>
+          <div class="guide-list">
+            <div>• <strong>Discord:</strong> Server Settings → Integrations → Webhooks</div>
+            <div>• <strong>Slack:</strong> Dùng Incoming Webhooks app</div>
+            <div>• <strong>Generic:</strong> Nhận <code>{ event, data, ts }</code></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Desktop -->
+  <div id="ntf-desktop" class="subtab-page">
+    <div class="sec" style="max-width:480px">
+      <h3>🖥 Desktop Notification</h3>
+      <div class="toggle-row" style="margin-bottom:14px">
+        <span class="toggle-label fw-bold">Bật Desktop</span>
+        <label class="toggle"><input type="checkbox" id="ntf-desktop-enabled"><span class="tslider"></span></label>
+      </div>
+      <div class="hint">Yêu cầu cài: <code>npm install node-notifier</code></div>
+    </div>
+  </div>
+
+  <div class="sf">
+    <span class="saved" id="notif-saved-msg">✓ Đã lưu</span>
+    <button class="btn-p" onclick="saveNotifierConfig()">💾 Lưu</button>
+    <span class="saved" id="wh-saved-msg" style="display:none">✓ Đã lưu webhook</span>
+    <button class="btn-p" id="wh-save-btn" onclick="saveWebhookConfig()" style="display:none">💾 Lưu webhook</button>
+  </div>
+</div>
+
+<!-- ══ SCHEDULER (gộp Single + Multi) ══ -->
+<div id="page-scheduler" class="page">
+  <div class="subtabs">
+    <button class="stab active" onclick="showSubtab('sched','single',this)">⏰ Một lần</button>
+    <button class="stab"        onclick="showSubtab('sched','multi',this)">📅 Theo site</button>
+  </div>
+
+  <!-- Single scheduler -->
+  <div id="sched-single" class="subtab-page active">
+    <div id="sched-status-box" style="display:none">
+      <div class="countdown-box">
+        <div class="countdown-label">Sẽ tự động Start All sau</div>
+        <span class="countdown-time" id="sched-countdown">00:00:00</span>
+        <div class="countdown-target" id="sched-target-label"></div>
+      </div>
+      <div style="text-align:center">
+        <button class="btn-d" onclick="cancelSchedule()">✕ Huỷ lịch</button>
+      </div>
+    </div>
+    <div id="sched-form-wrap">
+      <div class="settings-grid">
+        <div class="sec">
+          <h3>⏰ Đặt giờ bắt đầu</h3>
+          <div class="field">
+            <label>Giờ bắt đầu (hôm nay hoặc ngày mai)</label>
+            <input type="time" id="sched-time" step="1" style="width:100%">
+            <div class="hint">Nếu giờ đã qua sẽ tự động chuyển sang ngày mai</div>
+          </div>
+          <div class="field">
+            <label>Pre-warm trước (giây)</label>
+            <input type="number" id="sched-prewarm" value="30" min="5" max="120" class="field-input-full">
+            <div class="hint">Khởi động session Puppeteer trước N giây</div>
+          </div>
+          <button class="btn-p" onclick="scheduleStart()" style="width:100%;margin-top:6px">⏰ Đặt lịch</button>
+        </div>
+        <div class="sec">
+          <h3>ℹ️ Hướng dẫn</h3>
+          <div class="guide-list">
+            <div>1. Nhập giờ muốn bắt đầu (VD: <code class="code-accent">12:00:00</code>)</div>
+            <div>2. Đặt pre-warm để login Puppeteer trước (mặc định 30 giây)</div>
+            <div>3. Nhấn <strong class="code-accent">Đặt lịch</strong> — đồng hồ đếm ngược sẽ hiện ra</div>
+            <div>4. Đúng giờ → tool tự động Start All</div>
+            <div class="info-box" style="margin-top:10px">💡 Lịch được lưu vào <code>scheduler.json</code>, reload trang không mất lịch.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Multi scheduler -->
+  <div id="sched-multi" class="subtab-page">
+    <div class="settings-grid">
+      <div class="sec">
+        <h3>📅 Đặt lịch theo site</h3>
+        <div class="field">
+          <label>Site</label>
+          <select id="ms-site" class="sel"></select>
+        </div>
+        <div class="field">
+          <label>Giờ bắt đầu</label>
+          <input type="time" id="ms-time" step="1" style="width:100%">
+          <div class="hint">Nếu đã qua sẽ tự chuyển sang ngày mai</div>
+        </div>
+        <div class="field">
+          <label>Pre-warm (giây)</label>
+          <input type="number" id="ms-prewarm" value="30" min="5" max="120" class="field-input-full">
+        </div>
+        <div class="field">
+          <label>Label (tuỳ chọn)</label>
+          <input type="text" id="ms-label" class="field-input-full" placeholder="VD: Flash sale 12h">
+        </div>
+        <button class="btn-p" onclick="addMultiSchedule()" style="width:100%;margin-top:4px">⏰ Đặt lịch</button>
+      </div>
+      <div class="sec">
+        <h3>📋 Lịch đã đặt</h3>
+        <div id="ms-list"><div class="no-data">Chưa có lịch nào</div></div>
+        <div style="display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--b)">
+          <button class="btn-ghost" onclick="sendCmd('cleanupMultiSchedule')" style="flex:1;font-size:.68rem">🧹 Dọn lịch cũ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SITES ══ -->
+<div id="page-sites" class="page">
+  <div class="settings-grid">
+    <div class="sec">
+      <h3>🌐 Danh sách site đang chạy</h3>
+      <div id="site-list-items">
+        <div class="no-data" style="padding:20px">Đang tải...</div>
+      </div>
+      <div class="hint" style="margin-top:10px">Xoá site sẽ xoá file <code>sites/&lt;id&gt;.json</code> và không thể hoàn tác.</div>
+    </div>
+    <div class="sec">
+      <h3>➕ Thêm site mới</h3>
+      <p class="hint" style="margin-bottom:10px">Dán JSON config site vào đây. Nhấn "Dùng template" để bắt đầu.</p>
+      <textarea id="new-site-json" class="json-editor" placeholder='{ "id": "mysite", ... }'></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn-ghost" onclick="fillSiteTemplate()" style="flex:1">📋 Dùng template</button>
+        <button class="btn-p"     onclick="validateAndAddSite()" style="flex:1">✓ Thêm site</button>
+      </div>
+      <div class="hint" style="margin-top:8px">File sẽ được lưu tại <code>sites/&lt;id&gt;.json</code> và engine cần restart để chạy site mới.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ANALYTICS ══ -->
+<div id="page-analytics" class="page">
+  <div class="analytics-toolbar">
+    <span class="hint">Khoảng thời gian:</span>
+    <select id="analytics-days" onchange="loadAnalytics()" class="analytics-select">
+      <option value="1">24 giờ qua</option>
+      <option value="3">3 ngày</option>
+      <option value="7" selected>7 ngày</option>
+      <option value="30">30 ngày</option>
+    </select>
+    <button class="btn-ghost" onclick="loadAnalytics()" style="padding:5px 14px;font-size:.72rem">↺ Refresh</button>
+  </div>
+  <div id="analytics-content">
+    <div class="no-data">Đang tải...</div>
+  </div>
+</div>
+
+<!-- ══ HEALTH (Account Health + Retry Strategy) ══ -->
+<div id="page-health" class="page">
+  <div class="settings-grid" style="margin-bottom:14px">
+    <div class="sec">
+      <h3>💚 Account Health</h3>
+      <p class="hint" style="margin-bottom:12px">Điểm sức khoẻ tổng hợp (cập nhật mỗi 10s). Dựa trên tỷ lệ 429, restart, lịch sử mua.</p>
+      <div id="health-list"><div class="no-data">Đang tải...</div></div>
+    </div>
+    <div class="sec">
+      <h3>🔁 Retry Strategy</h3>
+      <p class="hint" style="margin-bottom:12px">Cấu hình chiến lược retry cho từng site.</p>
+      <div class="field">
+        <label>Site</label>
+        <select id="retry-site" class="sel" onchange="loadRetryForSite()"></select>
+      </div>
+      <div class="field">
+        <label>Preset</label>
+        <select id="retry-preset" onchange="applyRetryPreset()" class="sel">
+          <option value="">-- Chọn preset --</option>
+          <option value="aggressive">⚡ Aggressive (1s, x1.5, max 30s)</option>
+          <option value="default">⚖️ Default (3s, x2, max 60s)</option>
+          <option value="patient">🐢 Patient (5s linear, max 60s)</option>
+          <option value="stepped">📶 Stepped (2→5→10→20→60s)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Type</label>
+        <select id="retry-type" class="sel">
+          <option value="exponential">Exponential</option>
+          <option value="linear">Linear</option>
+          <option value="stepped">Stepped</option>
+        </select>
+      </div>
+      <div class="field"><label>Base delay (ms)</label><input type="number" id="retry-base" value="3000" min="100" class="field-input-full"></div>
+      <div class="field"><label>Max delay (ms)</label><input type="number" id="retry-max" value="60000" min="1000" class="field-input-full"></div>
+      <div class="field"><label>Max retries</label><input type="number" id="retry-count" value="10" min="1" max="50" class="field-input-full"></div>
+      <div class="field"><label>Jitter (ms, 0 = tắt)</label><input type="number" id="retry-jitter" value="0" min="0" class="field-input-full"></div>
+      <button class="btn-p" onclick="saveRetryStrategy()" style="width:100%;margin-top:4px">💾 Lưu retry strategy</button>
+      <span class="saved" id="retry-saved-msg" style="display:block;margin-top:8px;text-align:center">✓ Đã lưu</span>
+    </div>
+  </div>
+  <div class="sec">
+    <h3>📊 Session Health Monitor</h3>
+    <p class="hint" style="margin-bottom:10px">Trạng thái session theo thời gian thực. Xanh = healthy, đỏ = expired/lỗi.</p>
+    <div id="session-health-list"><div class="no-data">Đang chờ dữ liệu...</div></div>
+  </div>
+</div>
+
+<!-- Export buttons injected into history toolbar -->
+<template id="tpl-export-extra">
+  <button class="btn-ghost" onclick="sendCmd('exportJSON',{filter:getHistoryFilter()})">⬇ JSON</button>
+  <button class="btn-ghost" onclick="sendCmd('exportSummary')">📊 Summary</button>
+</template>
+
+<script src="ui-client.js"></script>
+</body>
+</html>

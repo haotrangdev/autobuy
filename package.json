@@ -1,0 +1,75 @@
+{
+  "name": "autobuy",
+  "version": "1.0.0",
+  "description": "AutoBuy Dashboard",
+  "main": "index.js",
+  "scripts": {
+    "start": "electron .",
+    "web": "cross-env UI_MODE=web node index.js",
+    "terminal": "cross-env UI_MODE=terminal node index.js",
+    "dev": "cross-env NODE_ENV=development electron .",
+    "build": "electron-builder --win --x64",
+    "build:dir": "electron-builder --win --x64 --dir"
+  },
+  "dependencies": {
+    "blessed": "^0.1.81",
+    "express": "^4.22.1",
+    "puppeteer-core": "^24.37.5",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "electron": "^29.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.autobuy.app",
+    "productName": "AutoBuy",
+    "copyright": "Copyright © 2024",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "ui-web.js",
+      "ui-terminal.js",
+      "watchdog.js",
+      "sites.js",
+      "history.js",
+      "core.js",
+      "index.js",
+      "config.js",
+      "config*.json",
+      "!node_modules/.cache"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "electron/assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "electron/assets/icon.ico",
+      "uninstallerIcon": "electron/assets/icon.ico",
+      "installerHeaderIcon": "electron/assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AutoBuy"
+    }
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "id":          "lychuotbach",
+  "name":        "Lý Chuột Bạch",
+  "hostname":    "lychuotbach.shop",
+  "loginPageUrl":"https://lychuotbach.shop/accounts/11061b48-41e2-4afc-a099-ebd5f459181f",
+
+  "maxPrice":    7000,
+  "maxBuy":      0,
+  "fetchLimit":  10,
+  "retryNormal": 800,
+  "retrySale":   100,
+  "jitter":      200,
+  "cooldownAfter429": 10000,
+  "emptyThreshold":   60,
+  "pageTimeout": 10000,
+
+  "accounts": [
+    { "username": "test000", "password": "test000", "label": "Acc1", "enabled": true }
+  ],
+
+  "ui": {
+    "uiMode":   "web",
+    "terminal": false,
+    "web":      true,
+    "webPort":  3000,
+    "remote":   false
+  },
+
+  "api": {
+    "list": {
+      "method": "GET",
+      "path":   "/api/accounts/public/single",
+      "params": {
+        "cate_id": "{cateId}",
+        "limit":   "{limit}",
+        "page":    1
+      },
+      "parseList":  "data.records",
+      "parseTotal": "data.total",
+      "parsePrice": "final_sale_price",
+      "parseId":    "id"
+    },
+
+    "cateId": {
+      "source": "loginPageUrl",
+      "regex":  "accounts/([a-f0-9-]{36})"
+    },
+
+    "buy": {
+      "method": "POST",
+      "path":   "/api/account-transaction/buy-by-id",
+      "body":   { "account_id": "{id}" }
+    },
+
+    "auth": {
+      "type":         "jwt_cookie",
+      "refreshPath":  "/api/auth/refresh-token",
+      "refreshBody":  { "refresh_token": "{refresh_token}" },
+      "accessField":  "data.access_token",
+      "userIdField":  "user_id",
+      "cookieNames":  ["access_token", "refresh_token", "cf_clearance"]
+    },
+
+    "responses": {
+      "success":    { "check": "success === true", "orStatus": [200, 201] },
+      "soldOut":    { "keywords": ["đã bán", "sold", "không tìm thấy"] },
+      "outOfMoney": { "keywords": ["không đủ", "insufficient"], "orStatus": [402] },
+      "rateLimit":  { "status": 429 }
+    }
+  },
+
+  "login": {
+    "type":               "modal",
+    "openModalText":      "Đăng ký/Đăng nhập",
+    "switchToLoginText":  "Nhấn vào đây để đăng nhập",
+    "usernameSelector":   "input#username",
+    "passwordSelector":   "input#password",
+    "successText":        "Đăng xuất"
+  }
+}
