@@ -1,256 +1,155 @@
-# ⚡ AutoBuy
+# ⚡ AutoBuy Bot
 
-Tool tự động mua acc trên các web flash sale. Hỗ trợ multi-account, multi-site, Web UI realtime, Telegram notification, hẹn giờ, và analytics.
+Bot tự động mua hàng flash sale với Web UI, multi-account, scheduler và Telegram notification.
 
----
+## Tính năng
 
-## 📋 Yêu cầu
+- **Multi-account** — chạy song song nhiều tài khoản trên nhiều site
+- **Web UI** — dashboard real-time qua browser, không cần cài thêm gì
+- **Electron** — desktop app với system tray
+- **Terminal UI** — full-screen dashboard trong terminal (dùng blessed)
+- **Scheduler** — hẹn giờ tự động start (single + per-site)
+- **Retry strategy** — linear / exponential / stepped, config per-site
+- **Adaptive rate limit** — tự động giảm tốc khi bị 429, rotate sang account khỏe
+- **Telegram / Webhook / Desktop** notification khi mua được
+- **Session health** — proactive ping để detect session hết hạn trước khi bị lỗi
+- **Hot reload** — thay đổi config không cần restart
+- **Export** — lịch sử mua dạng CSV / JSON / JSONL / Summary
 
-- Node.js 18+
-- Chrome / Chromium (cho Puppeteer login)
-- npm
-
----
-
-## 🚀 Cài đặt lần đầu
+## Cài đặt
 
 ```bash
-# 1. Clone / copy project vào thư mục
+# Clone và cài dependencies
+git clone <repo-url>
 cd autobuy
-
-# 2. Cài dependencies
 npm install
 
-# 3. Cấu hình site đầu tiên
-# Sửa file sites/lychuotbach.json — điền thông tin account:
-#   "accounts": [{ "username": "user", "password": "pass", "label": "Acc1", "enabled": true }]
+# Copy env template
+cp .env.example .env
 
-# 4. Chạy
-npm run web
-# Mở trình duyệt: http://localhost:3000
+# Tạo site config (xem hướng dẫn bên dưới)
+cp sites/example.json sites/mysite.json
+# Sửa sites/mysite.json với thông tin site thực
 ```
 
----
+## Cấu hình site
 
-## 📁 Cấu trúc thư mục
-
-```
-autobuy/
-├── index.js              # Entry point
-├── core.js               # BuyEngine — vòng lặp mua
-├── adapter.js            # Chuyển JSON site config → site object
-├── sites.js              # Load sites từ sites/*.json
-├── watchdog.js           # Auto-restart engine khi crash
-├── session-pool.js       # Quản lý session dùng chung, tránh race condition
-├── notifier.js           # Telegram + Desktop notification
-├── scheduler.js          # Hẹn giờ tự động Start All
-├── logger.js             # Structured logging (JSON Lines)
-├── auth.js               # Basic auth cho Web UI (remote mode)
-├── history.js            # Lịch sử mua hàng + Export CSV
-├── ui-web.js             # Web Dashboard (Express + WebSocket)
-├── pm2.config.js         # PM2 config để chạy background
-│
-├── sites/                # Cấu hình từng site (JSON)
-│   └── lychuotbach.json  # Template — copy để thêm site mới
-│
-└── logs/                 # Tự động tạo
-    ├── events.jsonl      # Structured event log
-    ├── pm2-out.log       # stdout (khi dùng PM2)
-    └── pm2-err.log       # stderr (khi dùng PM2)
-```
-
----
-
-## ⚙️ Cấu hình site
-
-Mỗi site là 1 file JSON trong `sites/`. Xem `sites/lychuotbach.json` làm template.
-
-**Các field quan trọng:**
-
-| Field | Mô tả |
-|---|---|
-| `id` | ID unique, dùng làm tên file và key override |
-| `hostname` | Domain của site (không có `https://`) |
-| `loginPageUrl` | URL trang sản phẩm (chứa category ID) |
-| `maxPrice` | Giá tối đa để mua (₫) |
-| `retryNormal` | Delay giữa các lần fetch khi hết hàng (ms) |
-| `retrySale` | Delay khi đang có hàng (ms) — nên nhỏ hơn |
-| `accounts` | Danh sách account để mua |
-| `api.*` | Cách parse response của site |
-| `login.*` | Selector Puppeteer để đăng nhập |
-
-**Thêm site mới:**
-1. Copy `sites/lychuotbach.json` → `sites/tensite.json`
-2. Sửa các field theo API của site đó
-3. Restart app — site tự động được load (không cần sửa code)
-
-Hoặc dùng **Web UI → tab 🌐 Sites → Thêm site mới**.
-
----
-
-## 🖥 Web UI
-
-Mở `http://localhost:3000` sau khi chạy.
-
-| Tab | Chức năng |
-|---|---|
-| 📊 Dashboard | Realtime log, stats, account status |
-| 📋 Lịch sử | Lịch sử mua, filter, export CSV, xem chi tiết acc |
-| ⚙️ Cấu hình | Thay đổi settings site (maxPrice, delay...) và accounts |
-| 🔔 Thông báo | Cài Telegram bot, chọn loại event nhận |
-| ⏰ Hẹn giờ | Đặt giờ tự động Start All với countdown |
-| 🌐 Sites | Thêm/xoá site, xem danh sách |
-| 📈 Analytics | Thống kê mua/rate limit/restart theo giờ |
-| 🔒 Bảo mật | Đặt password cho Web UI khi remote |
-
-**Dark/light mode:** nút 🌙 góc trên phải header.
-
----
-
-## 📱 Telegram Notification
-
-1. Chat với [@BotFather](https://t.me/BotFather) → `/newbot` → lấy **Bot Token**
-2. Chat với [@userinfobot](https://t.me/userinfobot) → lấy **Chat ID** của bạn
-3. Vào Web UI → **🔔 Thông báo** → nhập token + chat ID → bật các event → **Lưu**
-4. Nhấn **📤 Gửi test** để kiểm tra
-
----
-
-## ⏰ Hẹn giờ
-
-1. Vào Web UI → **⏰ Hẹn giờ**
-2. Nhập giờ bắt đầu (VD: `12:00:00` cho flash sale trưa)
-3. Đặt pre-warm (mặc định 30s) — tool sẽ login Puppeteer trước N giây
-4. Nhấn **Đặt lịch** → đồng hồ đếm ngược xuất hiện
-5. Đúng giờ → tự động Start All
-
-Lịch được lưu vào `scheduler.json` — reload trang / tắt mở tab không mất lịch.
-
----
-
-## 🔒 Bảo mật (Remote access)
-
-Khi muốn truy cập dashboard từ điện thoại hoặc máy khác:
-
-1. Trong `sites/lychuotbach.json`, đặt `"remote": true` và `"webPort": 3000`
-2. Vào Web UI → **🔒 Bảo mật** → bật xác thực → đặt username/password → Lưu
-3. Restart app
-4. Truy cập `http://<IP-máy-chủ>:3000` — trình duyệt sẽ hỏi login
-
-> ⚠️ Nếu quên password: xoá file `auth.json` rồi restart.
-
----
-
-## 🛠 Chạy background với PM2
-
-```bash
-# Cài PM2 (1 lần)
-npm install -g pm2
-
-# Khởi động
-pm2 start pm2.config.js
-
-# Xem log realtime
-pm2 logs autobuy
-
-# Dừng (graceful — đợi engine finish request hiện tại)
-pm2 stop autobuy
-
-# Restart
-pm2 restart autobuy
-
-# Tự khởi động khi boot máy
-pm2 startup
-pm2 save
-
-# Xem memory/CPU
-pm2 monit
-```
-
----
-
-## 📈 Analytics
-
-Tab **📈 Analytics** hiển thị từ log file `logs/events.jsonl`:
-
-- **Tổng mua / chi tiêu / rate limit / restart**
-- **Top buyers** — account nào mua nhiều nhất
-- **Giờ có nhiều stock** — biết flash sale thường mở lúc mấy giờ
-
-Chọn khoảng: 24h / 3 ngày / 7 ngày / 30 ngày.
-
----
-
-## 🔧 Biến môi trường
-
-| Biến | Mặc định | Mô tả |
-|---|---|---|
-| `UI_MODE` | đọc từ site config | `web` / `terminal` / `electron` |
-| `CHROME_PATH` | auto-detect | Đường dẫn Chrome nếu không tìm thấy tự động |
-
----
-
-## 🧩 Thêm site mới — Hướng dẫn nhanh
+Mỗi site là 1 file JSON trong thư mục `sites/`. Xem `sites/example.json` để biết cấu trúc đầy đủ.
 
 ```json
 {
   "id": "mysite",
-  "hostname": "example.com",
-  "loginPageUrl": "https://example.com/products/<category-uuid>",
-  "api": {
-    "list": {
-      "path": "/api/products",
-      "params": { "category_id": "{cateId}", "limit": "{limit}" },
-      "parseList":  "data.items",
-      "parsePrice": "price",
-      "parseId":    "id"
-    },
-    "buy": {
-      "path": "/api/buy",
-      "body": { "product_id": "{id}" }
-    },
-    "responses": {
-      "success":    { "check": "success === true", "orStatus": [200] },
-      "soldOut":    { "keywords": ["sold out", "hết hàng"] },
-      "outOfMoney": { "keywords": ["insufficient"], "orStatus": [402] },
-      "rateLimit":  { "status": 429 }
-    }
-  },
-  "login": {
-    "usernameSelector": "input#username",
-    "passwordSelector": "input#password",
-    "successText": "Đăng xuất"
+  "name": "My Site",
+  "hostname": "mysite.com",
+  "maxPrice": 500000,
+  "accounts": [
+    { "username": "user@email.com", "password": "pass", "enabled": true }
+  ]
+}
+```
+
+## Chạy
+
+```bash
+# Web UI mode (mặc định)
+npm start
+# → mở http://localhost:3000
+
+# Terminal UI
+npm run start:terminal
+
+# Electron desktop app
+npm run start:electron
+
+# Chỉ định mode qua env
+UI_MODE=web npm start
+```
+
+## Test
+
+```bash
+npm test                # run tất cả tests
+npm run test:verbose    # output chi tiết
+```
+
+## Cấu trúc project
+
+```
+autobuy/
+├── index.js              # Entry point, dispatch web/terminal/electron
+├── core.js               # BuyEngine — logic mua hàng chính
+├── watchdog.js           # Watchdog — retry/restart engine khi crash
+├── adapter.js            # Chuyển JSON site config → JS functions
+├── sites.js              # Load + scan sites/ directory
+├── history.js            # Lịch sử mua + export CSV/JSON/JSONL
+├── logger.js             # Structured logging (JSONL)
+├── notifier.js           # Telegram + Webhook + Desktop notification
+├── scheduler.js          # Hẹn giờ single-shot
+├── multi-scheduler.js    # Hẹn giờ per-site
+├── auth.js               # Basic auth cho Web UI
+├── retry-strategy.js     # Pluggable retry strategies
+├── adaptive-limiter.js   # Per-account adaptive rate limiter
+├── account-health.js     # Health score + trend per account
+├── session-health.js     # Proactive session ping monitor
+├── session-pool.js       # Session pool management
+├── hot-reload.js         # Config hot reload
+│
+├── ui-web/               # Web UI (Express + WebSocket)
+│   ├── ui-web.js
+│   ├── ui-template.html
+│   ├── ui-style.css
+│   └── ui-client.js
+│
+├── ui-terminal.js        # Terminal UI (blessed)
+│
+├── electron/             # Electron wrapper
+│   ├── main.js
+│   └── preload.js
+│
+├── sites/                # Site configs (*.json, không commit)
+│   └── example.json      # Template
+│
+├── tests/                # Test suite (node:test)
+│   └── *.test.js
+│
+└── logs/                 # Event logs (auto-created, không commit)
+```
+
+## Biến môi trường
+
+| Biến | Mặc định | Mô tả |
+|---|---|---|
+| `UI_MODE` | `web` | `web` \| `terminal` \| `electron` |
+
+Xem `.env.example` để biết thêm.
+
+## Web UI Auth
+
+Khi mở `remote: true` trong site config, bắt buộc phải đặt password:
+
+```json
+// auth.json (tạo thủ công hoặc qua tab Cấu hình)
+{
+  "enabled": true,
+  "username": "admin",
+  "password": "yourpassword"
+}
+```
+
+## Notification
+
+Cấu hình trong tab **🔔 Thông báo** trên Web UI, hoặc tạo `notifier.json`:
+
+```json
+{
+  "telegram": {
+    "enabled": true,
+    "botToken": "YOUR_BOT_TOKEN",
+    "chatId": "YOUR_CHAT_ID"
   }
 }
 ```
 
-Dùng **DevTools → Network** của Chrome để xem API của site và điền đúng các field trên.
+## License
 
----
-
-## ❓ Troubleshooting
-
-**Puppeteer không login được:**
-- Kiểm tra `loginPageUrl` đúng không
-- Thử set `CHROME_PATH` trỏ đến Chrome đã cài
-- Xem log trong `debug_<site>_<user>.log`
-
-**429 liên tục:**
-- Tăng `retryNormal` và `cooldownAfter429` trong Settings
-- Tool đã có adaptive rate limit — cooldown tự tăng khi bị 429 nhiều lần
-
-**Token hết hạn giữa chừng:**
-- SessionPool tự xử lý — chỉ 1 engine refresh, engine khác chờ
-- Nếu vẫn lỗi: xoá `tokens_*.json` và `cookies_*.json`, login lại
-
-**Site thêm mới không load:**
-- Kiểm tra file JSON hợp lệ (dùng jsonlint.com)
-- Restart app sau khi thêm site
-
-
-  git init
-  git add .
-  git commit -m "Initial commit: passing tests"
-  git branch -M main
-  git remote add origin <repo-url-tren-github>
-  git push -u origin main
+MIT

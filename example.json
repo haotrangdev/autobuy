@@ -1,0 +1,76 @@
+{
+  "_comment": "Template site config — copy file này, đổi tên thành sites/<tensite>.json và điền thông tin thực",
+
+  "id":       "example-site",
+  "name":     "Example Site",
+  "hostname": "example.com",
+
+  "ui": {
+    "web":      true,
+    "terminal": false,
+    "webPort":  3000,
+    "remote":   false,
+    "uiMode":   "web"
+  },
+
+  "maxPrice":        500000,
+  "maxBuy":          1,
+  "fetchLimit":      10,
+  "retryNormal":     800,
+  "retrySale":       200,
+  "jitter":          100,
+  "cooldownAfter429":30000,
+  "emptyThreshold":  5,
+  "pageTimeout":     30000,
+
+  "retryStrategy": {
+    "type":       "exponential",
+    "baseDelay":  3000,
+    "factor":     2.0,
+    "maxDelay":   60000,
+    "maxRetries": 10,
+    "jitter":     500
+  },
+
+  "login": {
+    "url":             "https://example.com/login",
+    "usernameSelector":"#username",
+    "passwordSelector":"#password",
+    "submitSelector":  "#login-btn",
+    "successUrl":      "https://example.com/dashboard"
+  },
+
+  "api": {
+    "list": {
+      "url":        "https://api.example.com/products",
+      "method":     "GET",
+      "dataPath":   "data.items",
+      "idField":    "id",
+      "priceField": "price",
+      "stockField": "stock"
+    },
+    "buy": {
+      "url":    "https://api.example.com/buy",
+      "method": "POST",
+      "body": {
+        "product_id": "{id}",
+        "quantity":   1
+      }
+    },
+    "responses": {
+      "success":    { "path": "code", "value": 200 },
+      "soldOut":    { "path": "code", "value": 404 },
+      "outOfMoney": { "path": "code", "value": 402 },
+      "rateLimit":  { "path": "code", "value": 429 }
+    }
+  },
+
+  "accounts": [
+    {
+      "username": "user@example.com",
+      "password": "yourpassword",
+      "label":    "Tài khoản chính",
+      "enabled":  true
+    }
+  ]
+}

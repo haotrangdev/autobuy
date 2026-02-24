@@ -1,0 +1,37 @@
+version: '3.9'
+
+services:
+  autobuy:
+    build: .
+    container_name: autobuy
+    restart: unless-stopped
+
+    environment:
+      - UI_MODE=web
+
+    ports:
+      - "3000:3000"
+
+    volumes:
+      # Persist data (KHÔNG mount node_modules)
+      - ./sites:/app/sites
+      - ./logs:/app/logs
+      - ./sessions:/app/sessions
+      - ./history.json:/app/history.json
+      - ./notifier.json:/app/notifier.json
+      - ./auth.json:/app/auth.json
+      - ./config.override.json:/app/config.override.json
+
+    # Puppeteer cần một số shared memory
+    shm_size: '1gb'
+
+    # Cho phép Puppeteer chạy Chrome trong container
+    security_opt:
+      - seccomp:unconfined
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

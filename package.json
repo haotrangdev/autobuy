@@ -1,75 +1,73 @@
 {
-  "name": "autobuy",
+  "name": "autobuy-bot",
   "version": "1.0.0",
-  "description": "AutoBuy Dashboard",
+  "description": "Automated buy bot với Web UI, Electron, Terminal UI, scheduler và multi-account support",
   "main": "index.js",
   "scripts": {
-    "start": "electron .",
-    "web": "cross-env UI_MODE=web node index.js",
-    "terminal": "cross-env UI_MODE=terminal node index.js",
-    "dev": "cross-env NODE_ENV=development electron .",
-    "build": "electron-builder --win --x64",
-    "build:dir": "electron-builder --win --x64 --dir"
+    "start":          "node index.js",
+    "start:web":      "UI_MODE=web node index.js",
+    "start:terminal": "UI_MODE=terminal node index.js",
+    "start:electron": "electron index.js",
+    "dev":            "node --watch index.js",
+    "test":           "node --test tests/*.test.js",
+    "test:verbose":   "node --test --reporter=spec tests/*.test.js",
+    "test:watch":     "node --test --watch tests/*.test.js",
+    "pack":           "electron-builder --dir",
+    "dist":           "electron-builder",
+    "dist:win":       "electron-builder --win",
+    "dist:mac":       "electron-builder --mac",
+    "dist:linux":     "electron-builder --linux"
   },
+  "keywords": ["autobuy", "bot", "puppeteer", "electron"],
+  "author": "",
+  "license": "MIT",
   "dependencies": {
-    "blessed": "^0.1.81",
-    "express": "^4.22.1",
-    "puppeteer-core": "^24.37.5",
-    "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "ws": "^8.19.0"
+    "express":    "^4.18.2",
+    "puppeteer":  "^21.0.0",
+    "ws":         "^8.14.2"
+  },
+  "optionalDependencies": {
+    "blessed":        "^0.1.81",
+    "node-notifier":  "^10.0.1"
   },
   "devDependencies": {
-    "cross-env": "^10.1.0",
-    "electron": "^29.0.0",
-    "electron-builder": "^24.9.1"
+    "electron":         "^27.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "build": {
-    "appId": "com.autobuy.app",
+    "appId":   "com.autobuy.bot",
     "productName": "AutoBuy",
-    "copyright": "Copyright © 2024",
+    "asar": true,
+    "files": [
+      "**/*",
+      "!tests/**",
+      "!logs/**",
+      "!sessions/**",
+      "!history.json",
+      "!*.json",
+      "sites/example.json"
+    ],
     "directories": {
       "output": "dist"
     },
-    "files": [
-      "electron/**/*",
-      "ui-web.js",
-      "ui-terminal.js",
-      "watchdog.js",
-      "sites.js",
-      "history.js",
-      "core.js",
-      "index.js",
-      "config.js",
-      "config*.json",
-      "!node_modules/.cache"
-    ],
     "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
+      "target": "nsis",
       "icon": "electron/assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "electron/assets/icon.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "electron/assets/icon.png"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "installerIcon": "electron/assets/icon.ico",
-      "uninstallerIcon": "electron/assets/icon.ico",
-      "installerHeaderIcon": "electron/assets/icon.ico",
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "AutoBuy"
+      "allowToChangeInstallationDirectory": true
     }
   }
 }
